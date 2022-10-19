@@ -36,8 +36,38 @@
 (show-paren-mode 1)
 (setq calendar-date-style 'iso
       column-number-mode t
-      custom-file (concat user-emacs-directory "custom.el"))
+      custom-file (concat user-emacs-directory "custom.el")
+      backup-directory-alist `((".*" . ,temporary-file-directory))
+      auto-save-file-name-transforms `((".*" ,temporary-file-directory t)))
 (load custom-file)
+
+(defun swap-window-direction (direction arg)
+  (let ((other-window (windmove-find-other-window direction arg))
+	(current-buffer (window-buffer)))
+    (cond ((null other-window)
+	   (user-error "Cannot swap, there is no window %s from selected window" direction))
+	  ((or (window-minibuffer-p (selected-window))
+	       (window-minibuffer-p other-window))
+	   (user-error "Cannot swap window with minibuffer"))
+	  (t
+	   (unless arg
+	     (set-window-buffer (selected-window) (window-buffer other-window)))
+	   (set-window-buffer other-window current-buffer)
+	   (select-window other-window)))))
+
+(windmove-default-keybindings 'super)
+(global-set-key [C-s-right] (lambda (&optional arg)
+			      (interactive "P")
+			      (swap-window-direction 'right arg)))
+(global-set-key [C-s-left] (lambda (&optional arg)
+			     (interactive "P")
+			     (swap-window-direction 'left arg)))
+(global-set-key [C-s-down] (lambda (&optional arg)
+			     (interactive "P")
+			     (swap-window-direction 'down arg)))
+(global-set-key [C-s-up] (lambda (&optional arg)
+			   (interactive "P")
+			   (swap-window-direction 'up arg)))
 
 (setq dashboard-items '((recents . 10)
 			(bookmarks . 10)))
@@ -85,7 +115,8 @@
       font-latex-fontify-script nil
       TeX-electric-escape t)
 
-(setq company-minimum-prefix-length 1)
+(setq company-minimum-prefix-length 1
+      company-idle-delay 0)
 
 (add-hook 'after-init-hook 'global-company-mode)
 
