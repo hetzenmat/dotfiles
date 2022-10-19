@@ -1,7 +1,5 @@
 (add-hook 'window-setup-hook 'toggle-frame-maximized t)
 
-(setq column-number-mode t)
-
 (require 'package)
 (add-to-list 'package-archives
              '("melpa" . "https://melpa.org/packages/") t)
@@ -34,13 +32,21 @@
 (setq recentf-max-saved-items 10000)
 (savehist-mode)
 (save-place-mode)
-
+(electric-pair-mode 1)
+(show-paren-mode 1)
+(setq calendar-date-style 'iso
+      column-number-mode t
+      custom-file (concat user-emacs-directory "custom.el"))
+(load custom-file)
 
 (setq dashboard-items '((recents . 10)
 			(bookmarks . 10)))
 (dashboard-setup-startup-hook)
+
 (vertico-mode)
+
 (marginalia-mode)
+
 (pdf-tools-install)
 
 (setq consult-async-min-input 1)
@@ -104,19 +110,9 @@
       read-buffer-completion-ignore-case t
       completion-ignore-case t)
 
+(setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+      doom-themes-enable-italic t) ; if nil, italics is universally disabled
+
 (load-theme 'doom-gruvbox t)
 
 (setq gc-cons-threshold (* 16 1024 1024))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(dashboard vterm pdf-tools doom-themes doom-modeline auctex company embark consult marginalia orderless vertico)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
