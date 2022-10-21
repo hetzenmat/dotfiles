@@ -17,7 +17,8 @@
 		  doom-themes
 		  pdf-tools
 		  vterm
-		  dashboard))
+		  dashboard
+		  which-key))
       (needs-refresh t))
   (dolist (package packages)
     (unless (package-installed-p package)
@@ -40,6 +41,11 @@
       backup-directory-alist `((".*" . ,temporary-file-directory))
       auto-save-file-name-transforms `((".*" ,temporary-file-directory t)))
 (load custom-file)
+
+(require 'which-key)
+(setq which-key-show-early-on-C-h t
+      which-key-idle-delay 0.5)
+(which-key-mode)
 
 (defun swap-window-direction (direction arg)
   (let ((other-window (windmove-find-other-window direction arg))
@@ -113,7 +119,11 @@
       ;; Just save, don't ask before each compilation.
       TeX-save-query nil
       font-latex-fontify-script nil
-      TeX-electric-escape t)
+      TeX-electric-escape t
+      TeX-view-program-selection '((output-pdf "PDF Tools")))
+
+
+(add-hook 'pdf-view-mode-hook #'(lambda () (display-line-numbers-mode -1)))
 
 (setq company-minimum-prefix-length 1
       company-idle-delay 0)
