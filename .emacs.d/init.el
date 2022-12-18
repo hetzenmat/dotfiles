@@ -11,14 +11,16 @@
 		  marginalia
 		  consult
 		  embark
-		  company
+		  embark-consult
 		  auctex
-		  doom-modeline
 		  doom-themes
 		  pdf-tools
 		  vterm
 		  dashboard
-		  which-key))
+		  which-key
+		  tuareg
+		  merlin
+		  corfu))
       (needs-refresh t))
   (dolist (package packages)
     (unless (package-installed-p package)
@@ -105,6 +107,12 @@
 
 (add-to-list 'auto-mode-alist '("\\.tex\\'" . LaTeX-mode))
 
+(add-hook 'LaTeX-mode-hook
+	  #'(lambda ()
+	      (setq TeX-complete-list (seq-filter #'(lambda (l)
+			      (not (eq 'LaTeX--after-math-macro-prefix-p (car l))))
+			  TeX-complete-list))))
+
 (setq TeX-parse-self t ; parse on load
       TeX-auto-save t  ; parse on save
       ;; Use hidden directories for AUCTeX files.
@@ -119,16 +127,15 @@
       ;; Just save, don't ask before each compilation.
       TeX-save-query nil
       font-latex-fontify-script nil
-      TeX-electric-escape t
-      TeX-view-program-selection '((output-pdf "PDF Tools")))
-
+      TeX-view-program-selection '((output-pdf "Okular")))
 
 (add-hook 'pdf-view-mode-hook #'(lambda () (display-line-numbers-mode -1)))
 
 (setq company-minimum-prefix-length 1
       company-idle-delay 0)
 
-(add-hook 'after-init-hook 'global-company-mode)
+(add-hook 'tuareg-mode-hook #'merlin-mode)
+(add-hook 'caml-mode-hook #'merlin-mode)
 
 (defun crm-indicator (args)
     (cons (format "[CRM%s] %s"
@@ -141,9 +148,15 @@
 (setq minibuffer-prompt-properties
         '(read-only t cursor-intangible t face minibuffer-prompt))
 (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
-(setq enable-recursive-minibuffers t)
+(setq enable-recursive-minibuffers t
+      tab-always-indent 'complete)
+
+(require 'corfu)
+(setq corfu-auto t)
+(add-hook 'tuareg-mode-hook #'corfu-mode)
 
 (setq completion-styles '(orderless basic)
+      orderless-matching-styles '(orderless-literal orderless-regexp orderless-flex)
       completion-category-defaults nil
       completion-category-overrides '((file (styles partial-completion))))
 
