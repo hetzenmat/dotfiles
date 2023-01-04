@@ -156,17 +156,25 @@
 (add-hook 'tuareg-mode-hook #'corfu-mode)
 
 (setq completion-styles '(orderless basic)
-      orderless-matching-styles '(orderless-literal orderless-regexp orderless-flex)
+      orderless-matching-styles '(orderless-literal orderless-regexp)
       completion-category-defaults nil
       completion-category-overrides '((file (styles partial-completion))))
 
 (setq read-file-name-completion-ignore-case t
       read-buffer-completion-ignore-case t
-      completion-ignore-case t)
+      completion-ignore-case t
+      require-final-newline nil
+      mode-require-final-newline nil)
 
 (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
       doom-themes-enable-italic t) ; if nil, italics is universally disabled
 
 (load-theme 'doom-gruvbox t)
+
+(defun rot-screen (op)
+  (interactive)
+  (shell-command "killall -9 krfb")
+  (shell-command (format "xrandr --output DP-2 --rotate %s" op))
+  (call-process-shell-command "krfb &" nil 0))
 
 (setq gc-cons-threshold (* 16 1024 1024))
