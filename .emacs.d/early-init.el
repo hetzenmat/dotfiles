@@ -1,4 +1,6 @@
-(setq gc-cons-threshold most-positive-fixnum)
+
+(setq gc-cons-threshold 100000000
+      read-process-output-max (* 1024 1024))
 
 (setq load-prefer-newer t)
 
