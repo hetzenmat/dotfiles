@@ -321,22 +321,59 @@
 
 (defun src-block-info->name (i)
   (nth 4 i))
+(defun src-block-info->language (i)
+  (nth 0 i))
+(defun src-block-info->body (i)
+  (nth 1 i))
+(defun src-block-info->arguments (i)
+  (nth 2 i))
+
+(defun src-block-info->use-list (i)
+  (split-string (or (cdr (assoc :use (src-block-info->arguments i))) "")))
+
+(setq liquid-cmd "liquid")
 
 (defun maybe-liquid (exec-hs body params)
   (when (assq :liquid params)
     (let* ((this-block-info (org-babel-get-src-block-info t))
 	   (this-block-name (src-block-info->name this-block-info))
-	   (use-list        (split-string (or (cdr (assoc :use params)) "")))
-	   (use-blocks-info (list this-block-info))
+	   (use-blocks-todo (if this-block-name (list this-block-name) nil))
+	   (use-blocks-info `((,this-block-name . ,this-block-info)))
 	   info
+	   (tmp-src-file (org-babel-temp-file "Haskell-src-" ".hs"))
 	   )
-      (dolist (name use-list)
-	(when (string= name this-block-name) (error "Cannot use current block."))
-	(setq info (get-src-info name))
-	(when (null info)
-	  (error "No source block found named '%s'" name))
-	(setq use-blocks-info (cons info use-blocks-info)))
-      (message "use: %S\nblocks: %S" use-list use-blocks-info))))
+      (when (src-block-info->use-list this-block-info)
+	(unless (and (stringp this-block-name) (> (length this-block-name) 0))
+	  (error "Block needs a name.")))
+
+      
+      
+      (while use-blocks-todo
+	(setq block-name (car use-blocks-todo)
+	      use-blocks-todo (cdr use-blocks-todo))
+	(unless (assoc block-name use-blocks-info)
+	  (setq info (get-src-info block-name))
+	  (when (null info)
+	    (message "block-name %s" this-block-info)
+	    (error "No source block found named '%s'" block-name))
+	  (setq use-blocks-info (cons `(,block-name . ,info) use-blocks-info))
+	  (setq use-blocks-todo (append use-blocks-todo (src-block-info->use-list info)))
+	  ))
+      (unless (--all? (string= "haskell" (src-block-info->language (cdr it))) use-blocks-info)
+	(error "All blocks must use the same language"))
+      (setq body (mapconcat (lambda (e) (src-block-info->body (cdr e))) use-blocks-info "\n\n"))
+      
+      (with-temp-file tmp-src-file
+	(progn
+	  (insert body)
+	  (newline)
+	  (unless (string-match-p "^[[:blank:]]*main[[:blank:]]*=" body)
+	    (insert (format "main = putStrLn \"Successfully verified %s\"\n" (or this-block-name ""))))))
+      
+      (ansi-color-apply (org-babel-eval
+       (format "%s %s" liquid-cmd (org-babel-process-file-name tmp-src-file)) ""))
+      
+      )))
 
 
 (setq org-confirm-babel-evaluate nil)
