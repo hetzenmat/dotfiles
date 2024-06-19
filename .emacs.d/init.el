@@ -6,8 +6,8 @@
 
 (package-initialize)
 
-(unless (package-installed-p 'use-package)
-  (package-install 'use-package))
+;(unless (package-installed-p 'use-package)
+;  (package-install 'use-package))
 
 (eval-when-compile
   (require 'use-package))
@@ -24,7 +24,11 @@
 	column-number-mode t
 	backup-directory-alist `((".*" . ,temporary-file-directory))
 	auto-save-file-name-transforms `((".*" ,temporary-file-directory t))
-	vc-follow-symlinks t)
+	vc-follow-symlinks t
+	read-file-name-completion-ignore-case t
+	read-buffer-completion-ignore-case t
+	completion-ignore-case t)
+  (setq-default cursor-type 'bar)
   (global-display-line-numbers-mode)
   (global-hl-line-mode)
   (recentf-mode)
@@ -261,6 +265,96 @@
 			   (interactive "P")
 			   (swap-window-direction 'up arg)))
 
+
+(setq org-clock-into-drawer nil)
+
+(add-hook 'focus-out-hook (lambda ()
+			    (when (and buffer-file-name (buffer-modified-p)) (save-buffer))))
+
+(require 'mu4e)
+
+(setq mu4e-contexts
+    `( 
+       ,(make-mu4e-context
+          :name "GMail"
+          :enter-func (lambda () (mu4e-message "Switch to the Work context"))
+          ;; no leave-func
+          ;; we match based on the maildir of the message
+          ;; this matches maildir /Arkham and its sub-directories
+          :match-func (lambda (msg)
+			(message msg)
+                        (when msg
+                          (string-match-p "^/gmail" (mu4e-message-field msg :maildir))))
+          :vars '( ( user-mail-address	       . "mhetzenberger@gmail.com" )
+                   ( user-full-name	       . "Matthias Hetzenberger" )
+		   ( mu4e-sent-folder          . "/gmail/Sent" )
+                   ))
+       ,(make-mu4e-context
+          :name "Work"
+          :enter-func (lambda () (mu4e-message "Switch to the Work context"))
+          ;; no leave-func
+          ;; we match based on the maildir of the message
+          ;; this matches maildir /Arkham and its sub-directories
+          :match-func (lambda (msg)
+			(message msg)
+                        (when msg
+                          (string= "/tu-work" (mu4e-message-field msg :maildir))))
+          :vars '( ( user-mail-address	       . "matthias.hetzenberger@tuwien.ac.at" )
+                   ( user-full-name	       . "Matthias Hetzenberger" )
+		   ( mu4e-sent-folder          . "/tu-work/Sent" )
+		   ( mu4e-maildir )
+                   ))))
+
+(use-package pdf-tools)
+
+(require 'ob-haskell)
+
+(defun get-src-info (id)
+  ;; Look for a source block named SOURCE-NAME.  If
+  ;; found, assume it is unique; do not look after
+  ;; `:noweb-ref' header argument.
+  (org-with-point-at 1
+     (let ((r (org-babel-named-src-block-regexp-for-name id)))
+       (and (re-search-forward r nil t)
+	    (not (org-in-commented-heading-p))
+            (org-babel-get-src-block-info t)))))
+
+(defun src-block-info->name (i)
+  (nth 4 i))
+
+(defun maybe-liquid (exec-hs body params)
+  (when (assq :liquid params)
+    (let* ((this-block-info (org-babel-get-src-block-info t))
+	   (this-block-name (src-block-info->name this-block-info))
+	   (use-list        (split-string (or (cdr (assoc :use params)) "")))
+	   (use-blocks-info (list this-block-info))
+	   info
+	   )
+      (dolist (name use-list)
+	(when (string= name this-block-name) (error "Cannot use current block."))
+	(setq info (get-src-info name))
+	(when (null info)
+	  (error "No source block found named '%s'" name))
+	(setq use-blocks-info (cons info use-blocks-info)))
+      (message "use: %S\nblocks: %S" use-list use-blocks-info))))
+
+
+(setq org-confirm-babel-evaluate nil)
+(setq org-return-follows-link t)
+
+(advice-add 'org-babel-execute:haskell :around #'maybe-liquid)
+
+(require 'auctex)
+
+(setq TeX-parse-self t
+      TeX-source-correlate-mode t
+      TeX-source-correlate-start-server t
+      tex-fontify-script nil
+      font-latex-fontify-script nil
+;;      TeX-view-program-list '(("Okular" "okular --unique %o"))
+      TeX-view-program-selection '((output-pdf "Okular")))
+
+
 ;(setq read-file-name-completion-ignore-case t
 ;      read-buffer-completion-ignore-case t
 ;      completion-ignore-case t
@@ -273,14 +367,25 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(default ((t (:family "JetBrains Mono" :foundry "JB" :slant normal :weight regular :height 120 :width normal)))))
+;(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+; '(blink-cursor-mode nil)
+; '(column-number-mode t)
+; '(global-display-line-numbers-mode t)
+; '(package-selected-packages
+;   '(haskell-mode racket-mode merlin-company merlin which-key vterm vertico use-package tuareg treemacs pdf-tools orderless marginalia flycheck evil embark-consult eglot dashboard corfu consult-lsp company cape))
+; '(tool-bar-mode nil))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(blink-cursor-mode nil)
- '(column-number-mode t)
- '(global-display-line-numbers-mode t)
+ '(custom-safe-themes
+   '("515ebca406da3e759f073bf2e4c8a88f8e8979ad0fdaba65ebde2edafc3f928c" "263e3a9286c7ab0c4f57f5d537033c8a5943e69d142e747723181ab9b12a5855" "6b839977baf10a65d9d7aed6076712aa2c97145f45abfa3bad1de9d85bc62a0e" "9d01a8af1bdd5c79b136dc5eb23b90d53675c3f4cb938dc15c4d8bc98d2bb86e" "df1ed4aa97d838117dbda6b2d84b70af924b0380486c380afb961ded8a41c386" "c42587b19ee1c9aa1a9dd1d8ace37ece24ca2a322243035cd6ba07f44fb466db" "f12083eec1537fc3bf074366999f0ee04ab23ab3eaba57614785d88b9db2a5d4" "c1638a7061fb86be5b4347c11ccf274354c5998d52e6d8386e997b862773d1d2" "64045b3416d83e5eac0718e236b445b2b3af02ff5bcd228e9178088352344a92" "c7a926ad0e1ca4272c90fce2e1ffa7760494083356f6bb6d72481b879afce1f2" "b29ba9bfdb34d71ecf3322951425a73d825fb2c002434282d2e0e8c44fce8185" "0f76f9e0af168197f4798aba5c5ef18e07c926f4e7676b95f2a13771355ce850" default))
+ '(mu4e-search-include-related nil)
  '(package-selected-packages
-   '(haskell-mode racket-mode merlin-company merlin which-key vterm vertico use-package tuareg treemacs pdf-tools orderless marginalia flycheck evil embark-consult eglot dashboard corfu consult-lsp company cape))
- '(tool-bar-mode nil))
+   '(auctex undo-tree ef-themes evil avy embark-consult embark modus-themes pdf-tools vterm corfu dashboard which-key marginalia orderless vertico magit haskell-mode consult company)))
+(put 'narrow-to-region 'disabled nil)
