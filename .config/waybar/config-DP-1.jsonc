@@ -1,0 +1,6 @@
+{
+    "output": ["DP-1"],
+    "include": [
+        "~/.config/waybar/config-common.jsonc"
+    ]
+}

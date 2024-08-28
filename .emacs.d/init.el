@@ -28,13 +28,13 @@
 	read-file-name-completion-ignore-case t
 	read-buffer-completion-ignore-case t
 	completion-ignore-case t)
-  (setq-default cursor-type 'bar)
-  (global-display-line-numbers-mode)
-  (global-hl-line-mode)
+  ;;(setq-default cursor-type 'bar)
+  ;;(global-display-line-numbers-mode)
+  ;;(global-hl-line-mode)
   (recentf-mode)
   (savehist-mode)
   (save-place-mode)
-  (electric-pair-mode)
+  ;;(electric-pair-mode)
   (show-paren-mode))
 
 (use-package vertico
@@ -221,10 +221,12 @@
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-auto t)                 ;; Enable auto completion
   (corfu-separator ?\s)          ;; Orderless field separator
+  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0.1)
   ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
   ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
   ;; (corfu-preview-current nil)    ;; Disable current candidate preview
-  (corfu-preselect 'prompt)      ;; Preselect the prompt
+  (corfu-preselect 'first)      ;; Preselect the prompt
   ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
   ;; (corfu-scroll-margin 5)        ;; Use scroll margin
 
@@ -237,73 +239,67 @@
 
 (use-package eglot)
 
-(defun swap-window-direction (direction arg)
-  (let ((other-window (windmove-find-other-window direction arg))
-	(current-buffer (window-buffer)))
-    (cond ((null other-window)
-	   (user-error "Cannot swap, there is no window %s from selected window" direction))
-	  ((or (window-minibuffer-p (selected-window))
-	       (window-minibuffer-p other-window))
-	   (user-error "Cannot swap window with minibuffer"))
-	  (t
-	   (unless arg
-	     (set-window-buffer (selected-window) (window-buffer other-window)))
-	   (set-window-buffer other-window current-buffer)
-	   (select-window other-window)))))
 
-(windmove-default-keybindings 'shift)
-(global-set-key [C-s-right] (lambda (&optional arg)
-			      (interactive "P")
-			      (swap-window-direction 'right arg)))
-(global-set-key [C-s-left] (lambda (&optional arg)
-			     (interactive "P")
-			     (swap-window-direction 'left arg)))
-(global-set-key [C-s-down] (lambda (&optional arg)
-			     (interactive "P")
-			     (swap-window-direction 'down arg)))
-(global-set-key [C-s-up] (lambda (&optional arg)
-			   (interactive "P")
-			   (swap-window-direction 'up arg)))
+(require 'windmove)
+(keymap-global-set "s-h" 'windmove-left)
+(keymap-global-set "M-<left>" 'windmove-left)
 
+(keymap-global-set "s-l" 'windmove-right)
+(keymap-global-set "M-<right>" 'windmove-right)
 
-(setq org-clock-into-drawer nil)
+(keymap-global-set "s-j" 'windmove-up)
+(keymap-global-set "M-<up>" 'windmove-up)
+
+(keymap-global-set "s-k" 'windmove-down)
+(keymap-global-set "M-<down>" 'windmove-down)
+
+(keymap-global-set "M-o" 'other-window)
+(keymap-global-set "s-b" 'consult-buffer)
+
+(setq org-clock-into-drawer nil
+      org-edit-src-content-indentation 0)
 
 (add-hook 'focus-out-hook (lambda ()
 			    (when (and buffer-file-name (buffer-modified-p)) (save-buffer))))
 
 (require 'mu4e)
+(setq mu4e-search-threads nil)
 
-(setq mu4e-contexts
-    `( 
-       ,(make-mu4e-context
-          :name "GMail"
-          :enter-func (lambda () (mu4e-message "Switch to the Work context"))
-          ;; no leave-func
-          ;; we match based on the maildir of the message
-          ;; this matches maildir /Arkham and its sub-directories
-          :match-func (lambda (msg)
-			(message msg)
-                        (when msg
-                          (string-match-p "^/gmail" (mu4e-message-field msg :maildir))))
-          :vars '( ( user-mail-address	       . "mhetzenberger@gmail.com" )
-                   ( user-full-name	       . "Matthias Hetzenberger" )
-		   ( mu4e-sent-folder          . "/gmail/Sent" )
-                   ))
-       ,(make-mu4e-context
-          :name "Work"
-          :enter-func (lambda () (mu4e-message "Switch to the Work context"))
-          ;; no leave-func
-          ;; we match based on the maildir of the message
-          ;; this matches maildir /Arkham and its sub-directories
-          :match-func (lambda (msg)
-			(message msg)
-                        (when msg
-                          (string= "/tu-work" (mu4e-message-field msg :maildir))))
-          :vars '( ( user-mail-address	       . "matthias.hetzenberger@tuwien.ac.at" )
-                   ( user-full-name	       . "Matthias Hetzenberger" )
-		   ( mu4e-sent-folder          . "/tu-work/Sent" )
-		   ( mu4e-maildir )
-                   ))))
+
+(require 'compile)
+
+(setq compilation-scroll-output 'first-error)
+
+(add-hook 'haskell-mode-hook
+	  (lambda ()
+	    (define-key haskell-mode-map (kbd "<f5>")
+			(lambda () (interactive)
+			  (save-buffer)
+			  (compile (format "liquid %s" (buffer-file-name)))))))
+
+(add-hook 'LaTeX-mode-hook
+	  (lambda ()
+	    (eglot-ensure)
+	    (define-key LaTeX-mode-map (kbd "<f5>")
+			(lambda () (interactive)
+			  (save-buffer)
+			  (compile (format "latexmk -quiet -f -pdf -shell-escape -synctex=1 -interaction=nonstopmode %s" (buffer-file-name)))))))
+
+
+(add-hook 'easycrypt-mode-hook
+	  (lambda ()
+	    (define-key easycrypt-mode-map (kbd "<next>") #'proof-assert-next-command-interactive)
+	    (define-key easycrypt-mode-map (kbd "<prior>") #'proof-undo-last-successful-command)))
+
+(setq display-buffer-alist '(("*compilation*\\|*vterm*\\|*eshell*"
+			     (display-buffer-in-side-window)
+			     (window-height . 0.25)
+			     (side . bottom))
+      ))
+
+(require 'compile)
+
+(push (lambda (buf _) (ansi-color-apply-on-region (point-min) (point-max))) compilation-finish-functions)
 
 (use-package pdf-tools)
 
@@ -329,24 +325,38 @@
   (nth 2 i))
 
 (defun src-block-info->use-list (i)
-  (split-string (or (cdr (assoc :use (src-block-info->arguments i))) "")))
+  (split-string (or (@ :arguments i) "")))
 
 (setq liquid-cmd "liquid")
 
+(defun @ (key alist)
+    (cdr (assq key alist)))
+
+(defun org-babel-get-src-block-info-alist (&optional no-eval datum)
+  (pcase (org-babel-get-src-block-info no-eval datum)
+    (`(,language ,body ,arguments ,switches ,name ,start ,coderef)
+     `((:language . ,language)
+       (:body . ,body)
+       (:arguments . ,arguments)
+       (:switches . ,switches)
+       (:name . ,name)
+       (:start . ,start)
+       (:coderef . ,coderef)))))
+
+(require 'dash)
+
 (defun maybe-liquid (exec-hs body params)
   (when (assq :liquid params)
-    (let* ((this-block-info (org-babel-get-src-block-info t))
-	   (this-block-name (src-block-info->name this-block-info))
+    (let* ((this-block-info (org-babel-get-src-block-info-alist t))
+	   (this-block-name (@ :name this-block-info))
 	   (use-blocks-todo (if this-block-name (list this-block-name) nil))
-	   (use-blocks-info `((,this-block-name . ,this-block-info)))
+	   (use-blocks-info (if this-block-name nil `((,this-block-name . ,this-block-info))))
 	   info
 	   (tmp-src-file (org-babel-temp-file "Haskell-src-" ".hs"))
 	   )
       (when (src-block-info->use-list this-block-info)
 	(unless (and (stringp this-block-name) (> (length this-block-name) 0))
-	  (error "Block needs a name.")))
-
-      
+	  (error "Block needs a name.")))      
       
       (while use-blocks-todo
 	(setq block-name (car use-blocks-todo)
@@ -354,15 +364,13 @@
 	(unless (assoc block-name use-blocks-info)
 	  (setq info (get-src-info block-name))
 	  (when (null info)
-	    (message "block-name %s" this-block-info)
 	    (error "No source block found named '%s'" block-name))
 	  (setq use-blocks-info (cons `(,block-name . ,info) use-blocks-info))
 	  (setq use-blocks-todo (append use-blocks-todo (src-block-info->use-list info)))
 	  ))
-      (unless (--all? (string= "haskell" (src-block-info->language (cdr it))) use-blocks-info)
+      (unless (--all? (string= "haskell" (@ :language it)) use-blocks-info)
 	(error "All blocks must use the same language"))
-      (setq body (mapconcat (lambda (e) (src-block-info->body (cdr e))) use-blocks-info "\n\n"))
-      
+      (setq body (mapconcat (lambda (e) (@ :body (cdr e))) use-blocks-info "\n\n"))
       (with-temp-file tmp-src-file
 	(progn
 	  (insert body)
@@ -379,17 +387,38 @@
 (setq org-confirm-babel-evaluate nil)
 (setq org-return-follows-link t)
 
+(defun merge-use-params (alists)
+  (let (result
+	cur-list
+	use-list)
+    (dolist (alist alists)
+      (setq cur-list nil)
+      (when alist
+	(pcase-dolist ((and cell `(,key . ,val)) alist)
+	  (if (eq key :use)
+	      (push val use-list)
+	    (push cell cur-list)))
+	(when cur-list
+	  (push cur-list result))))
+    (when use-list
+      (push `((:use . ,(mapconcat #'identity use-list " "))) result))
+    result))
+
+(advice-add 'org-babel-merge-params :filter-args #'merge-use-params)
+
 (advice-add 'org-babel-execute:haskell :around #'maybe-liquid)
 
-(require 'auctex)
 
-(setq TeX-parse-self t
-      TeX-source-correlate-mode t
-      TeX-source-correlate-start-server t
-      tex-fontify-script nil
-      font-latex-fontify-script nil
+
+
+;(require 'auctex)
+;(setq TeX-parse-self t
+;      TeX-source-correlate-mode t
+;      TeX-source-correlate-start-server t
+;      tex-fontify-script nil
+;      font-latex-fontify-script nil
 ;;      TeX-view-program-list '(("Okular" "okular --unique %o"))
-      TeX-view-program-selection '((output-pdf "Okular")))
+;      TeX-view-program-selection '((output-pdf "Okular")))
 
 
 ;(setq read-file-name-completion-ignore-case t
@@ -398,12 +427,12 @@
 ;      require-final-newline nil
 ;      mode-require-final-newline nil)
 
-(custom-set-faces
+;; (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "JetBrains Mono" :foundry "JB" :slant normal :weight regular :height 120 :width normal)))))
+ ;; '(default ((t (:family "JetBrains Mono" :foundry "JB" :slant normal :weight regular :height 120 :width normal)))))
 ;(custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -424,5 +453,12 @@
    '("515ebca406da3e759f073bf2e4c8a88f8e8979ad0fdaba65ebde2edafc3f928c" "263e3a9286c7ab0c4f57f5d537033c8a5943e69d142e747723181ab9b12a5855" "6b839977baf10a65d9d7aed6076712aa2c97145f45abfa3bad1de9d85bc62a0e" "9d01a8af1bdd5c79b136dc5eb23b90d53675c3f4cb938dc15c4d8bc98d2bb86e" "df1ed4aa97d838117dbda6b2d84b70af924b0380486c380afb961ded8a41c386" "c42587b19ee1c9aa1a9dd1d8ace37ece24ca2a322243035cd6ba07f44fb466db" "f12083eec1537fc3bf074366999f0ee04ab23ab3eaba57614785d88b9db2a5d4" "c1638a7061fb86be5b4347c11ccf274354c5998d52e6d8386e997b862773d1d2" "64045b3416d83e5eac0718e236b445b2b3af02ff5bcd228e9178088352344a92" "c7a926ad0e1ca4272c90fce2e1ffa7760494083356f6bb6d72481b879afce1f2" "b29ba9bfdb34d71ecf3322951425a73d825fb2c002434282d2e0e8c44fce8185" "0f76f9e0af168197f4798aba5c5ef18e07c926f4e7676b95f2a13771355ce850" default))
  '(mu4e-search-include-related nil)
  '(package-selected-packages
-   '(auctex undo-tree ef-themes evil avy embark-consult embark modus-themes pdf-tools vterm corfu dashboard which-key marginalia orderless vertico magit haskell-mode consult company)))
+   '(proof-general cape auctex undo-tree ef-themes evil avy embark-consult embark modus-themes pdf-tools vterm corfu dashboard which-key marginalia orderless vertico magit haskell-mode consult company))
+ '(proof-strict-read-only nil))
 (put 'narrow-to-region 'disabled nil)
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

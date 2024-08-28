@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# hyprctl keyword monitor eDP-1,disable
+hyprctl keyword monitor eDP-1, disable
+hyprctl keyword monitor DP-1, 1920x1080, 0x0, 1
+killall waybar
+waybar --config ~/.config/waybar/config-DP-1.jsonc &
